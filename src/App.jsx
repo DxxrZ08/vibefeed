@@ -90,7 +90,7 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <BookmarksProvider>
-          <Router basename="/vibefeed">
+          <Router>
             <Routes>
               <Route
                 path="/login"
