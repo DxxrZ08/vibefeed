@@ -7,7 +7,7 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { auth, db, facebookProvider, googleProvider, isFirebaseConfigured } from '../../firebase';
+import { auth, db, googleProvider, isFirebaseConfigured } from '../../firebase';
 import { resolveUserRole } from '../../utils/roleUtils';
 
 const ensureFirebaseReady = () => {
@@ -96,15 +96,6 @@ export const loginWithGooglePopup = async () => {
 
   const credential = await signInWithPopup(auth, googleProvider);
   const profile = await ensureUserProfileSafe(credential.user, 'Google User');
-
-  return { credential, profile };
-};
-
-export const loginWithFacebookPopup = async () => {
-  ensureFirebaseReady();
-
-  const credential = await signInWithPopup(auth, facebookProvider);
-  const profile = await ensureUserProfileSafe(credential.user, 'Facebook User');
 
   return { credential, profile };
 };

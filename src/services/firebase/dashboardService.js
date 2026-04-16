@@ -15,6 +15,7 @@ export const subscribeDashboardStats = (onNext, onError) => {
       totalPosts: posts.length,
       categoriesCount: getCategoryCounts(posts),
       recentPosts: posts.slice(0, 5),
+      usersList: users,
     });
   };
 

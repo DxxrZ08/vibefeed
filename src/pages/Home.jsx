@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Brain, Globe2, Radar, RefreshCw, Search, Sparkles, TrendingUp } from 'lucide-react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { ArrowUpRight, Brain, Globe2, Radar, RefreshCw, Search, Sparkles, TrendingUp } from 'lucide-react';
 import ArticleCard from '../components/ArticleCard';
 import FilterBar from '../components/FilterBar';
 import VibeScopePanel from '../components/VibeScopePanel';
@@ -18,8 +18,10 @@ const Home = () => {
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [selectedSentiment, setSelectedSentiment] = useState('All');
   const [selectedRegion, setSelectedRegion] = useState(userData?.regions?.[0] || 'us');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const location = useLocation();
+  const initialQuery = new URLSearchParams(location.search).get('search') || '';
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(initialQuery);
   const [articles, setArticles] = useState([]);
   const [storyClusters, setStoryClusters] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +51,14 @@ const Home = () => {
       setSelectedRegion(userData.regions[0]);
     }
   }, [userData]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const query = params.get('search') || '';
+    if (query !== searchQuery) {
+      setSearchQuery(query);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -191,16 +201,21 @@ const Home = () => {
   );
 
   const topPick = filteredArticles[0];
+  const topSources = feedMeta.topSources.length ? feedMeta.topSources : ['global publishers'];
+  const sourcePreview = topSources.slice(0, 3);
+  const activeFilterSummary = selectedSentiment === 'All' ? 'All sentiments' : `${selectedSentiment} sentiment`;
 
   return (
     <div className="home-page">
       <section className="hero-signal">
         <div className="hero-copy">
-          <p className="hero-kicker">New Era Newsroom</p>
-          <h1>{currentCategory.label} decoded for {currentRegion.label}</h1>
+          <p className="hero-kicker">Live intelligence feed</p>
+          <h1>
+            {currentCategory.label} for {currentRegion.label}
+          </h1>
           <p className="hero-description">
-            Vibefeed now blends live news signals, AI-assisted summaries, ML ranking, and cross-region narrative
-            comparison so you do not just read headlines, you understand how the story moves.
+            Scan what is moving now, compare how stories shift across regions, and open the source story when you want
+            the original context.
           </p>
 
           <div className="hero-pills">
@@ -214,25 +229,48 @@ const Home = () => {
             </span>
             <span className="hero-pill">
               <Radar size={14} />
-              Narrative divergence
+              Cross-region context
             </span>
+          </div>
+
+          <div className="hero-summary-row" aria-label="Feed summary">
+            <div className="hero-summary-item">
+              <span className="stat-label">Live stories</span>
+              <strong>{feedMeta.totalAnalyzed}</strong>
+            </div>
+            <div className="hero-summary-item">
+              <span className="stat-label">Average fit</span>
+              <strong>{feedMeta.avgRelevance}%</strong>
+            </div>
+            <div className="hero-summary-item">
+              <span className="stat-label">Regions</span>
+              <strong>{regionPack.length}</strong>
+            </div>
           </div>
         </div>
 
-        <div className="hero-stats">
-          <div className="hero-stat-card">
-            <span className="stat-label">Live stories</span>
-            <strong>{feedMeta.totalAnalyzed}</strong>
+        <aside className="hero-panel">
+          <div className="hero-panel-card">
+            <span className="panel-label">Feed brief</span>
+            <p>{feedMeta.digest || 'A concise brief will appear here once the feed has enough live coverage.'}</p>
           </div>
-          <div className="hero-stat-card">
-            <span className="stat-label">Avg signal match</span>
-            <strong>{feedMeta.avgRelevance}%</strong>
+          <div className="hero-panel-card compact">
+            <span className="panel-label">Sources in view</span>
+            <div className="source-stack">
+              {sourcePreview.map((source) => (
+                <span key={source} className="source-pill">
+                  {source}
+                </span>
+              ))}
+            </div>
           </div>
-          <div className="hero-stat-card">
-            <span className="stat-label">Regions in radar</span>
-            <strong>{regionPack.length}</strong>
+          <div className="hero-panel-card compact">
+            <span className="panel-label">Current mode</span>
+            <p>
+              {activeFilterSummary} in {currentRegion.label}
+            </p>
           </div>
-        </div>
+        </aside>
       </section>
 
       <section className="live-deck">
@@ -242,10 +280,7 @@ const Home = () => {
             Real-time feed active
           </div>
           <h2>Signal deck</h2>
-          <p>
-            Tracking {currentCategory.description} from {currentRegion.label}. Sources now visible in the same surface
-            as your AI and ML signals.
-          </p>
+          <p>Tracking {currentCategory.description} from {currentRegion.label}. Open the source story for the full read.</p>
         </div>
         <button className={`sync-btn deck-sync ${syncing ? 'syncing' : ''}`} onClick={() => loadFeed(true)} disabled={syncing}>
           <RefreshCw size={18} className="sync-icon" />
@@ -260,7 +295,7 @@ const Home = () => {
             type="search"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search live signals, topics, keywords, companies..."
+            placeholder="Search stories, companies, topics, or regions"
           />
         </div>
         <div className="digest-card">
@@ -284,8 +319,8 @@ const Home = () => {
         <section className="cluster-panel">
           <div className="cluster-panel-header">
             <div>
-              <p className="cluster-kicker">Useful Feature</p>
-              <h2>Story constellation</h2>
+              <p className="cluster-kicker">Story clusters</p>
+              <h2>What is connected right now</h2>
             </div>
             <span className="cluster-meta">{storyClusters.length} active clusters</span>
           </div>
@@ -319,7 +354,7 @@ const Home = () => {
         </div>
         <p className="page-subtitle">
           Your feed is tuned to <strong>{userPreferences.join(', ')}</strong> and sourced from{' '}
-          <strong>{feedMeta.topSources.join(', ') || 'global publishers'}</strong> via <strong>{feedMeta.provider}</strong>.
+          <strong>{topSources.join(', ')}</strong> via <strong>{feedMeta.provider}</strong>.
         </p>
       </header>
 
@@ -332,39 +367,65 @@ const Home = () => {
 
       {loading ? (
         <div className="loading-container">
-          <div className="loading-spinner"></div>
+          <div className="loading-spinner" />
           <p>Pulling live headlines and ranking them with Vibefeed intelligence...</p>
-          <span className="loading-subtitle">Fetching sources • building summaries • scoring narrative fit</span>
+          <span className="loading-subtitle">Fetching sources, building summaries, scoring narrative fit</span>
         </div>
       ) : filteredArticles.length > 0 ? (
-        <div className="articles-grid">
-          {filteredArticles.map((article, index) => (
-            <div key={article.id} className={index < 3 ? 'featured-article' : ''}>
-              {index === 0 && topPick?.relevanceScore > 85 && (
-                <div className="featured-label">
-                  <Sparkles size={14} />
-                  Prime signal • {topPick.relevanceScore}% fit
+        <>
+          {topPick && (
+            <section className="top-story-surface">
+              <div className="top-story-copy">
+                <p className="section-kicker">Top story</p>
+                <h3>{topPick.title}</h3>
+                <p>{topPick.summary}</p>
+                <div className="top-story-meta">
+                  <span className="top-story-chip">
+                    <Sparkles size={13} />
+                    {topPick.relevanceScore || 0}% fit
+                  </span>
+                  <span className="top-story-chip subtle">{topPick.source}</span>
+                  {topPick.region && <span className="top-story-chip subtle">{String(topPick.region).toUpperCase()}</span>}
                 </div>
-              )}
-              {index === 1 && (
-                <div className="featured-label secondary">
-                  <TrendingUp size={14} />
-                  Momentum watch
-                </div>
-              )}
-              {index === 2 && (
-                <div className="featured-label tertiary">
-                  <Radar size={14} />
-                  Narrative shift
-                </div>
-              )}
-              <ArticleCard article={article} />
-            </div>
-          ))}
-        </div>
+              </div>
+              <a className="top-story-link" href={topPick.url} target="_blank" rel="noreferrer">
+                Open source story
+                <ArrowUpRight size={16} />
+              </a>
+            </section>
+          )}
+
+          <div className="articles-grid">
+            {filteredArticles.map((article, index) => (
+              <div key={article.id} className={index < 3 ? 'featured-article' : ''}>
+                {index === 0 && topPick?.relevanceScore > 85 && (
+                  <div className="featured-label">
+                    <Sparkles size={14} />
+                    Prime signal - {topPick.relevanceScore}% fit
+                  </div>
+                )}
+                {index === 1 && (
+                  <div className="featured-label secondary">
+                    <TrendingUp size={14} />
+                    Momentum watch
+                  </div>
+                )}
+                {index === 2 && (
+                  <div className="featured-label tertiary">
+                    <Radar size={14} />
+                    Narrative shift
+                  </div>
+                )}
+                <ArticleCard article={article} />
+              </div>
+            ))}
+          </div>
+        </>
       ) : (
         <div className="no-results">
-          <div className="no-results-icon"><Search size={48} opacity={0.5} /></div>
+          <div className="no-results-icon">
+            <Search size={48} opacity={0.5} />
+          </div>
           <h3>No live stories matched this filter</h3>
           <p>Try switching region, broadening sentiment, or opening a wider category.</p>
         </div>

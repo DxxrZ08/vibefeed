@@ -4,7 +4,6 @@ import {
   getFriendlyAuthError,
   getUserProfile,
   loginUser,
-  loginWithFacebook,
   loginWithGoogle,
   logoutUser,
   registerUser,
@@ -56,13 +55,6 @@ export const AuthProvider = ({ children }) => {
 
   const loginWithGoogleProvider = async () => {
     const result = await loginWithGoogle();
-    setCurrentUser(result.credential.user);
-    setUserData(result.profile);
-    return result;
-  };
-
-  const loginWithFacebookProvider = async () => {
-    const result = await loginWithFacebook();
     setCurrentUser(result.credential.user);
     setUserData(result.profile);
     return result;
@@ -126,7 +118,6 @@ export const AuthProvider = ({ children }) => {
     signup,
     login,
     loginWithGoogle: loginWithGoogleProvider,
-    loginWithFacebook: loginWithFacebookProvider,
     logout,
     hasCompletedOnboarding,
     updateLocalUserData,

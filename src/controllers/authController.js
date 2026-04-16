@@ -3,7 +3,6 @@ import {
   ensureUserProfileSafe,
   fetchUserProfile,
   loginWithEmail,
-  loginWithFacebookPopup,
   loginWithGooglePopup,
   logoutCurrentUser,
   registerWithEmail,
@@ -41,7 +40,6 @@ export const getFriendlyAuthError = (error) => {
 export const registerUser = async ({ name, email, password }) => registerWithEmail({ name, email, password });
 export const loginUser = async ({ email, password }) => loginWithEmail({ email, password });
 export const loginWithGoogle = async () => loginWithGooglePopup();
-export const loginWithFacebook = async () => loginWithFacebookPopup();
 export const logoutUser = async () => logoutCurrentUser();
 export const subscribeToAuthState = (callback) => subscribeToAuth(callback);
 export const syncUserProfile = async (user, fallbackName) => ensureUserProfileSafe(user, fallbackName);

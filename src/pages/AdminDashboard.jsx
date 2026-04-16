@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BarChart3, Pencil, Plus, Shield, Trash2, Users } from 'lucide-react';
 import { createManagedPost, deleteManagedPost, listPosts, updateManagedPost } from '../controllers/postController';
+import { deleteManagedUser } from '../controllers/userController';
 import { watchDashboardStats } from '../controllers/dashboardController';
 import { useAuth } from '../context/AuthContext';
 import { NEWS_CATEGORIES } from '../utils/newsTaxonomy';
@@ -21,6 +22,7 @@ const AdminDashboard = () => {
     totalPosts: 0,
     categoriesCount: {},
     recentPosts: [],
+    usersList: [],
   });
   const [posts, setPosts] = useState([]);
   const [pageCursor, setPageCursor] = useState(null);
@@ -134,6 +136,18 @@ const AdminDashboard = () => {
       resetPaging();
     } catch (deleteError) {
       setError(deleteError.message || 'Unable to delete post.');
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    try {
+      if (!window.confirm("Are you sure you want to delete this user document? This action cannot be undone.")) return;
+      setError('');
+      setStatus('');
+      await deleteManagedUser({ userId, userData });
+      setStatus('User deleted successfully.');
+    } catch (deleteError) {
+      setError(deleteError.message || 'Unable to delete user.');
     }
   };
 
@@ -365,6 +379,44 @@ const AdminDashboard = () => {
               Next
             </button>
           </div>
+        </div>
+
+        <div className="admin-users-card admin-posts-card" style={{ marginTop: '2rem' }}>
+          <div className="admin-section-header">
+            <h2>Manage users</h2>
+          </div>
+          
+          {!stats.usersList?.length ? (
+            <div className="admin-empty">No users found.</div>
+          ) : (
+            <div className="admin-posts-list">
+              {stats.usersList.map((user) => (
+                <article key={user.id} className="managed-post-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div className="managed-post-copy">
+                    <div className="managed-post-meta">
+                      <span>{user.role || 'user'}</span>
+                      <span>•</span>
+                      <span>{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown date'}</span>
+                    </div>
+                    <h3 style={{ margin: '4px 0', fontSize: '1rem' }}>{user.name || 'Anonymous User'}</h3>
+                    <p style={{ margin: 0, fontSize: '0.875rem' }}>{user.email || 'No email'}</p>
+                    <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#64748b' }}>ID: {user.id}</p>
+                  </div>
+                  <div className="managed-post-actions">
+                    <button 
+                      type="button" 
+                      className="icon-btn danger" 
+                      onClick={() => handleDeleteUser(user.id)}
+                      disabled={user.email === currentUser?.email}
+                      title={user.email === currentUser?.email ? "Cannot delete yourself" : "Delete user document"}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </div>
       </section>
     </div>

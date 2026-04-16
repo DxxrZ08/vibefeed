@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { FacebookAuthProvider, getAuth, GoogleAuthProvider } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -24,6 +24,6 @@ export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
-export const facebookProvider = new FacebookAuthProvider();
 
 export default app;
+

@@ -1,5 +1,7 @@
 const PUBLIC_NEWS_BASE = 'https://saurav.tech/NewsAPI/top-headlines/category';
 const GOOGLE_NEWS_RSS = 'https://news.google.com/rss/search';
+const GNEWS_API_BASE = 'https://gnews.io/api/v4/top-headlines';
+const NEWSAPI_BASE = 'https://newsapi.org/v2/top-headlines';
 const CACHE_TTL_MS = 1000 * 60 * 5;
 const MAX_ARTICLE_AGE_HOURS = 72;
 
@@ -241,6 +243,107 @@ const buildSyntheticArticles = ({ categoryKey, region, limit, interests }) => {
   );
 };
 
+const fetchJson = async (url) => {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Provider request failed with ${response.status}`);
+  }
+  return response.json();
+};
+
+const mapProviderArticle = ({
+  article,
+  provider,
+  categoryKey,
+  region,
+  index,
+  interests,
+  title = article.title,
+  description = article.description,
+  source = article.source?.name || article.source,
+  date = article.publishedAt || article.date,
+  url = article.url,
+  image = article.image || article.urlToImage,
+}) =>
+  normalizeArticle({
+    item: {
+      title,
+      description,
+      source,
+      date,
+      url,
+      image,
+    },
+    provider,
+    categoryKey,
+    region,
+    index,
+    interests,
+  });
+
+const fetchFromGNews = async ({ categoryKey, region, limit, interests }) => {
+  const apiKey = process.env.GNEWS_API_KEY;
+  if (!apiKey) {
+    return [];
+  }
+
+  const category = getCategoryConfig(categoryKey);
+  const url = new URL(GNEWS_API_BASE);
+  url.searchParams.set('token', apiKey);
+  url.searchParams.set('lang', region === 'fr' ? 'fr' : region === 'de' ? 'de' : 'en');
+  url.searchParams.set('country', region);
+  url.searchParams.set('max', String(limit));
+  if (category.apiCategory !== 'general') {
+    url.searchParams.set('topic', category.apiCategory);
+  }
+
+  const data = await fetchJson(url);
+  return (data.articles || [])
+    .filter((article) => article.title && article.description && isFreshEnough(article.publishedAt))
+    .slice(0, limit)
+    .map((article, index) =>
+      mapProviderArticle({
+        article,
+        provider: 'gnews',
+        categoryKey,
+        region,
+        index,
+        interests,
+      })
+    );
+};
+
+const fetchFromNewsApi = async ({ categoryKey, region, limit, interests }) => {
+  const apiKey = process.env.NEWS_API_KEY;
+  if (!apiKey) {
+    return [];
+  }
+
+  const category = getCategoryConfig(categoryKey);
+  const url = new URL(NEWSAPI_BASE);
+  url.searchParams.set('apiKey', apiKey);
+  url.searchParams.set('country', region);
+  url.searchParams.set('pageSize', String(limit));
+  if (category.apiCategory !== 'general') {
+    url.searchParams.set('category', category.apiCategory);
+  }
+
+  const data = await fetchJson(url);
+  return (data.articles || [])
+    .filter((article) => article.title && article.description && isFreshEnough(article.publishedAt))
+    .slice(0, limit)
+    .map((article, index) =>
+      mapProviderArticle({
+        article,
+        provider: 'newsapi',
+        categoryKey,
+        region,
+        index,
+        interests,
+      })
+    );
+};
+
 const fetchFromGoogleNews = async ({ categoryKey, region, limit, interests }) => {
   const category = getCategoryConfig(categoryKey);
   const edition = getRegionConfig(region);
@@ -311,6 +414,24 @@ const fetchFromSaurav = async ({ categoryKey, region, limit, interests }) => {
 };
 
 const fetchLiveArticles = async ({ category, region, limit, interests }) => {
+  try {
+    const articles = await fetchFromGNews({ categoryKey: category, region, limit, interests });
+    if (articles.length > 0) {
+      return { provider: 'gnews', articles };
+    }
+  } catch (error) {
+    // fall through to next provider
+  }
+
+  try {
+    const articles = await fetchFromNewsApi({ categoryKey: category, region, limit, interests });
+    if (articles.length > 0) {
+      return { provider: 'newsapi', articles };
+    }
+  } catch (error) {
+    // fall through to next provider
+  }
+
   try {
     const articles = await fetchFromGoogleNews({ categoryKey: category, region, limit, interests });
     if (articles.length > 0) {

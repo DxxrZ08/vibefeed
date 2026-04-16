@@ -130,9 +130,10 @@ const fetchFallbackNews = async (categoryKey = 'all', region = 'us', userPrefere
   }
 
   const data = await response.json();
+  const todayDate = new Date().toISOString().slice(0, 10);
 
   return data.articles
-    .filter((article) => article.title && article.description)
+    .filter((article) => article.title && article.description && article.publishedAt?.startsWith(todayDate))
     .slice(0, 18)
     .map((article, index) =>
       normalizeBackendArticle(
@@ -160,6 +161,7 @@ const fetchFromBackend = async (category, region, userPreferences) => {
     region,
     limit: '18',
     interests: userPreferences.join(','),
+    from: new Date().toISOString().slice(0, 10),
   });
 
   const response = await fetch(`${BACKEND_URL}/news/live-feed?${params.toString()}`);
@@ -238,6 +240,7 @@ export const searchNews = async ({ query = '', category = 'all', region = 'us', 
       category,
       region,
       interests: userPreferences.join(','),
+      from: new Date().toISOString().slice(0, 10),
     });
 
     const response = await fetch(`${BACKEND_URL}/news/discover?${params.toString()}`);

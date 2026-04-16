@@ -8,16 +8,21 @@ const newsRoutes = require('./routes/news');
 
 const app = express();
 
-const allowedOrigins = new Set([
-  'http://127.0.0.1:5173',
-  'http://localhost:5173',
-  process.env.CLIENT_ORIGIN,
-].filter(Boolean));
+const allowedOrigins = new Set(
+  [
+    'http://127.0.0.1:5173',
+    'http://localhost:5173',
+    ...(process.env.CLIENT_ORIGIN || '')
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+  ].filter(Boolean)
+);
 
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.has(origin)) {
+      if (!origin || allowedOrigins.has(origin) || process.env.CLIENT_ORIGIN === '*') {
         return callback(null, true);
       }
       return callback(null, true);
@@ -29,6 +34,20 @@ app.use(express.json({ limit: '1mb' }));
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'vibefeed-server', time: new Date().toISOString() });
+});
+
+app.get('/', (_req, res) => {
+  res.json({
+    ok: true,
+    service: 'vibefeed-server',
+    message: 'VibeFeed backend is running.',
+    docs: {
+      health: '/health',
+      liveFeed: '/api/news/live-feed',
+      discover: '/api/news/discover',
+      vibeScope: '/api/news/vibe-scope',
+    },
+  });
 });
 
 app.use('/api/auth', authRoutes);

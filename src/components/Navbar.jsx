@@ -28,6 +28,7 @@ const Navbar = () => {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const profileMenuRef = useRef(null);
+  const mobileMenuRef = useRef(null);
 
   const navLinks = useMemo(
     () => [
@@ -53,6 +54,37 @@ const Navbar = () => {
   }, []);
 
   useEffect(() => {
+    if (!isMobileMenuOpen) {
+      return undefined;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleOutsideClick = (event) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target)) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setIsMobileMenuOpen(false);
+        setIsProfileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    window.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('mousedown', handleOutsideClick);
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [isMobileMenuOpen]);
+
+  useEffect(() => {
     const handleShortcut = (event) => {
       const isMetaShortcut = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k';
       if (isMetaShortcut) {
@@ -71,8 +103,9 @@ const Navbar = () => {
   const handleSearch = (event) => {
     event.preventDefault();
     const nextQuery = searchQuery.trim();
-    navigate(nextQuery ? `/desk?search=${encodeURIComponent(nextQuery)}` : '/desk');
+    navigate(nextQuery ? `/?search=${encodeURIComponent(nextQuery)}` : '/');
     setIsMobileMenuOpen(false);
+    setIsProfileMenuOpen(false);
   };
 
   const handleLogout = async () => {
@@ -87,7 +120,7 @@ const Navbar = () => {
   return (
     <nav className="navbar glass">
       <div className="navbar-container">
-        <Link to="/" className="navbar-brand">
+        <Link to="/" className="navbar-brand" aria-label="VibeFeed home">
           <span className="brand-mark">
             <Radio size={20} className="brand-logo-icon" />
           </span>
@@ -109,7 +142,7 @@ const Navbar = () => {
         </div>
 
         <div className="navbar-actions">
-          <form onSubmit={handleSearch} className="search-form desktop-only">
+          <form onSubmit={handleSearch} className="search-form desktop-only" role="search">
             <Search size={18} />
             <input
               type="text"
@@ -117,12 +150,14 @@ const Navbar = () => {
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               className="search-input navbar-search-input"
+              aria-label="Search stories"
             />
-            <span className="search-shortcut">{navigator.platform.includes('Mac') ? '⌘K' : 'Ctrl+K'}</span>
+            <span className="search-shortcut">Ctrl/Cmd+K</span>
           </form>
 
           <div className="action-cluster desktop-only">
             <button
+              type="button"
               onClick={toggleTheme}
               className="icon-button nav-action-btn"
               aria-label="Toggle theme"
@@ -138,6 +173,7 @@ const Navbar = () => {
                   className="icon-button nav-action-btn"
                   data-tooltip="Saved stories"
                   onClick={() => navigate('/saved')}
+                  aria-label="Saved stories"
                 >
                   <Bookmark size={20} fill={bookmarkCount > 0 ? 'currentColor' : 'none'} />
                   {bookmarkCount > 0 && <span className="bookmark-count">{bookmarkCount > 99 ? '99+' : bookmarkCount}</span>}
@@ -148,6 +184,7 @@ const Navbar = () => {
                   className="icon-button nav-action-btn"
                   data-tooltip="Intelligence alerts"
                   onClick={() => navigate('/for-you')}
+                  aria-label="Open alerts"
                 >
                   <Bell size={20} />
                   <span className="notification-dot" />
@@ -159,6 +196,7 @@ const Navbar = () => {
                     className="profile-trigger"
                     onClick={() => setIsProfileMenuOpen((previous) => !previous)}
                     aria-expanded={isProfileMenuOpen}
+                    aria-haspopup="menu"
                   >
                     <span className="profile-avatar">{avatarLabel}</span>
                     <span className="profile-copy">
@@ -169,7 +207,7 @@ const Navbar = () => {
                   </button>
 
                   {isProfileMenuOpen && (
-                    <div className="profile-menu surface-card">
+                    <div className="profile-menu surface-card" role="menu">
                       <button type="button" className="profile-menu-item" onClick={() => navigate('/profile')}>
                         <User size={18} />
                         <span>Profile</span>
@@ -202,6 +240,8 @@ const Navbar = () => {
             className="mobile-menu-btn mobile-only icon-button"
             onClick={() => setIsMobileMenuOpen((previous) => !previous)}
             aria-label="Toggle menu"
+            aria-expanded={isMobileMenuOpen}
+            aria-controls="mobile-nav-panel"
           >
             {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -209,58 +249,111 @@ const Navbar = () => {
       </div>
 
       {isMobileMenuOpen && (
-        <div className="mobile-menu surface-card">
-          <form onSubmit={handleSearch} className="mobile-search-form">
-            <Search size={18} />
-            <input
-              type="text"
-              placeholder="Search stories"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              className="search-input"
-            />
-          </form>
-
-          <div className="mobile-nav-stack">
-            {navLinks.map((link) => (
-              <NavLink
-                key={link.name}
-                to={link.path}
-                className={({ isActive }) => `mobile-nav-link ${isActive ? 'active' : ''}`}
+        <div className="mobile-menu-backdrop" onClick={() => setIsMobileMenuOpen(false)}>
+          <div
+            className="mobile-menu surface-card"
+            id="mobile-nav-panel"
+            ref={mobileMenuRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation menu"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mobile-menu-header">
+              <div>
+                <p className="mobile-menu-kicker">Navigation</p>
+                <h2>Find stories faster</h2>
+              </div>
+              <button
+                type="button"
+                className="mobile-menu-close icon-button"
                 onClick={() => setIsMobileMenuOpen(false)}
+                aria-label="Close menu"
               >
-                {link.name}
-              </NavLink>
-            ))}
-          </div>
-
-          {currentUser ? (
-            <div className="mobile-account-block">
-              <button type="button" className="mobile-nav-link with-icon" onClick={() => { navigate('/saved'); setIsMobileMenuOpen(false); }}>
-                <Bookmark size={18} />
-                <span>Saved stories</span>
-                {bookmarkCount > 0 && <span className="bookmark-count mobile-count">{bookmarkCount}</span>}
-              </button>
-              <button type="button" className="mobile-nav-link with-icon" onClick={() => { navigate('/profile'); setIsMobileMenuOpen(false); }}>
-                <User size={18} />
-                <span>Profile</span>
-              </button>
-              {isAdmin && (
-                <button type="button" className="mobile-nav-link with-icon" onClick={() => { navigate('/admin'); setIsMobileMenuOpen(false); }}>
-                  <LayoutDashboard size={18} />
-                  <span>Dashboard</span>
-                </button>
-              )}
-              <button type="button" className="mobile-nav-link with-icon" onClick={handleLogout}>
-                <LogOut size={18} />
-                <span>Logout</span>
+                <X size={18} />
               </button>
             </div>
-          ) : (
-            <Link to="/login" className="mobile-nav-link mobile-auth-link" onClick={() => setIsMobileMenuOpen(false)}>
-              Sign In
-            </Link>
-          )}
+
+            <form onSubmit={handleSearch} className="mobile-search-form" role="search">
+              <Search size={18} />
+              <input
+                type="text"
+                placeholder="Search signals, stories, topics"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="search-input"
+                aria-label="Search stories"
+              />
+              <button type="submit" className="mobile-search-submit">
+                Go
+              </button>
+            </form>
+            <p className="mobile-search-hint">Shortcut: Ctrl/Cmd+K</p>
+
+            <div className="mobile-nav-stack">
+              {navLinks.map((link) => (
+                <NavLink
+                  key={link.name}
+                  to={link.path}
+                  className={({ isActive }) => `mobile-nav-link ${isActive ? 'active' : ''}`}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <span>{link.name}</span>
+                  <span className="mobile-nav-needle">Open</span>
+                </NavLink>
+              ))}
+            </div>
+
+            {currentUser ? (
+              <div className="mobile-account-block">
+                <div className="mobile-account-label">Account</div>
+                <button
+                  type="button"
+                  className="mobile-nav-link with-icon"
+                  onClick={() => {
+                    navigate('/saved');
+                    setIsMobileMenuOpen(false);
+                  }}
+                >
+                  <Bookmark size={18} />
+                  <span>Saved stories</span>
+                  {bookmarkCount > 0 && <span className="bookmark-count mobile-count">{bookmarkCount}</span>}
+                </button>
+                <button
+                  type="button"
+                  className="mobile-nav-link with-icon"
+                  onClick={() => {
+                    navigate('/profile');
+                    setIsMobileMenuOpen(false);
+                  }}
+                >
+                  <User size={18} />
+                  <span>Profile</span>
+                </button>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    className="mobile-nav-link with-icon"
+                    onClick={() => {
+                      navigate('/admin');
+                      setIsMobileMenuOpen(false);
+                    }}
+                  >
+                    <LayoutDashboard size={18} />
+                    <span>Dashboard</span>
+                  </button>
+                )}
+                <button type="button" className="mobile-nav-link with-icon danger" onClick={handleLogout}>
+                  <LogOut size={18} />
+                  <span>Logout</span>
+                </button>
+              </div>
+            ) : (
+              <Link to="/login" className="mobile-nav-link mobile-auth-link" onClick={() => setIsMobileMenuOpen(false)}>
+                Sign In
+              </Link>
+            )}
+          </div>
         </div>
       )}
     </nav>
